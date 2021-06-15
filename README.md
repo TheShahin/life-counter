@@ -1,1 +1,2 @@
-# vegan-calculator
+# life-counter
+
