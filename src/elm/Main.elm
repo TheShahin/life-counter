@@ -1,8 +1,8 @@
 module Main exposing (main)
 
 import Browser
-import Browser.Events exposing (onClick)
-import Html exposing (Attribute, Html, div, text)
+import Browser.Events exposing (onClick, onKeyPress)
+import Html exposing (Html, div, text)
 import Html.Attributes exposing (style)
 import Json.Decode exposing (succeed)
 import Task
@@ -20,7 +20,7 @@ millisPerYear =
 
 totalAnnualLandAnimals : Float
 totalAnnualLandAnimals =
-    7.3e10
+    7.8e10
 
 
 deathRatePerMillis : Float
@@ -54,6 +54,7 @@ type Msg
 
 type alias Model =
     { isStarted : Bool
+    , isHidden : Bool
     , startTime : Posix
     , elapsedTime : Posix
     , totalDeaths : Int
@@ -63,6 +64,7 @@ type alias Model =
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( Model
+        False
         False
         (millisToPosix 0)
         (millisToPosix 0)
@@ -80,7 +82,7 @@ update msg model =
     case msg of
         Click ->
             if model.isStarted then
-                ( model, Cmd.none )
+                ( { model | isHidden = not model.isHidden }, Cmd.none )
 
             else
                 ( { model | isStarted = True }
@@ -117,6 +119,7 @@ subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ onClick (succeed Click)
+        , onKeyPress (succeed Click)
         , every 50 Tick
         ]
 
@@ -128,30 +131,49 @@ subscriptions _ =
 view : Model -> Html Msg
 view model =
     let
+        absolutePosition =
+            style "position" "absolute"
+
+        fontSize =
+            style "font-size"
+
+        parentStyle =
+            [ style "font-family" "Verdana, sans-serif"
+            , style "background-color" "black"
+            , style "color" "white"
+            , style "text-align" "center"
+            , style "height" "100%"
+            , style "width" "100%"
+            , absolutePosition
+            ]
+
         time : Posix -> (Zone -> Posix -> Int) -> String
         time posix f =
             String.padLeft 2 '0' <| String.fromInt <| f utc posix
 
-        fontSize : String -> Attribute msg
-        fontSize =
-            style "font-size"
+        timerDiv =
+            div
+                [ fontSize "4em"
+                ]
+                [ text (List.map (time model.elapsedTime) [ toHour, toMinute, toSecond ] |> String.join ":")
+                ]
     in
     div
-        [ style "font-family" "Verdana, sans-serif"
-        , style "text-align" "center"
-        ]
-        [ div
-            [ fontSize "10em"
-            , style "position" "absolute"
-            , style "transform" "translate(-50%, -50%)"
-            , style "top" "50%"
-            , style "left" "50%"
-            ]
-            [ text (String.fromInt model.totalDeaths)
-            ]
-        , div
-            [ fontSize "3em"
-            ]
-            [ text (List.map (time model.elapsedTime) [ toHour, toMinute, toSecond ] |> String.join ":")
-            ]
-        ]
+        parentStyle
+        (timerDiv
+            :: (if model.isHidden then
+                    []
+
+                else
+                    [ div
+                        [ fontSize "10em"
+                        , absolutePosition
+                        , style "transform" "translate(-50%, -50%)"
+                        , style "top" "50%"
+                        , style "left" "50%"
+                        ]
+                        [ text (String.fromInt model.totalDeaths)
+                        ]
+                    ]
+               )
+        )
