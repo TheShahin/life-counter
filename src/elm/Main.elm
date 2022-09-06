@@ -5,6 +5,7 @@ import Browser.Events exposing (onClick, onKeyPress)
 import Html exposing (Html, div, text)
 import Html.Attributes exposing (style)
 import Json.Decode exposing (succeed)
+import String.Extra
 import Task
 import Time exposing (Posix, Zone, every, millisToPosix, now, posixToMillis, toHour, toMinute, toSecond, utc)
 
@@ -18,14 +19,14 @@ millisPerYear =
     3.15576e10
 
 
-totalAnnualLandAnimals : Float
-totalAnnualLandAnimals =
+landAnimalsKilledPerYear : Float
+landAnimalsKilledPerYear =
     7.8e10
 
 
 deathRatePerMillis : Float
 deathRatePerMillis =
-    totalAnnualLandAnimals / millisPerYear
+    landAnimalsKilledPerYear / millisPerYear
 
 
 
@@ -147,15 +148,17 @@ view model =
             , absolutePosition
             ]
 
-        time : Posix -> (Zone -> Posix -> Int) -> String
-        time posix f =
-            String.padLeft 2 '0' <| String.fromInt <| f utc posix
-
         timerDiv =
             div
                 [ fontSize "4em"
                 ]
-                [ text (List.map (time model.elapsedTime) [ toHour, toMinute, toSecond ] |> String.join ":")
+                [ text
+                    (String.join ":"
+                        (List.map
+                            (\unit -> unit utc model.elapsedTime |> String.fromInt >> String.padLeft 2 '0')
+                            [ toHour, toMinute, toSecond ]
+                        )
+                    )
                 ]
     in
     div
@@ -165,6 +168,15 @@ view model =
                     []
 
                 else
+                    let
+                        prettyCount : Int -> String
+                        prettyCount =
+                            String.fromInt >>
+                            String.reverse >>
+                            String.Extra.break 3 >>
+                            String.join " " >>
+                            String.reverse
+                    in
                     [ div
                         [ fontSize "10em"
                         , absolutePosition
@@ -172,7 +184,7 @@ view model =
                         , style "top" "50%"
                         , style "left" "50%"
                         ]
-                        [ text (String.fromInt model.totalDeaths)
+                        [ text (prettyCount model.totalDeaths)
                         ]
                     ]
                )
