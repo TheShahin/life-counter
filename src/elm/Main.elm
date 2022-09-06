@@ -2,11 +2,11 @@ module Main exposing (main)
 
 import Browser
 import Browser.Events exposing (onClick)
-import Html
+import Html exposing (Attribute, Html, div, text)
 import Html.Attributes exposing (style)
 import Json.Decode exposing (succeed)
 import Task
-import Time
+import Time exposing (Posix, Zone, every, millisToPosix, now, posixToMillis, toHour, toMinute, toSecond, utc)
 
 
 
@@ -44,8 +44,8 @@ main =
 
 type Msg
     = Click
-    | Start Time.Posix
-    | Tick Time.Posix
+    | Start Posix
+    | Tick Posix
 
 
 
@@ -54,8 +54,8 @@ type Msg
 
 type alias Model =
     { isStarted : Bool
-    , startTime : Time.Posix
-    , elapsedTime : Time.Posix
+    , startTime : Posix
+    , elapsedTime : Posix
     , totalDeaths : Int
     }
 
@@ -64,8 +64,8 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     ( Model
         False
-        (Time.millisToPosix 0)
-        (Time.millisToPosix 0)
+        (millisToPosix 0)
+        (millisToPosix 0)
         0
     , Cmd.none
     )
@@ -84,11 +84,11 @@ update msg model =
 
             else
                 ( { model | isStarted = True }
-                , Task.perform Start Time.now
+                , Task.perform Start now
                 )
 
         Start time ->
-            ( { model | startTime = time, elapsedTime = time }
+            ( { model | startTime = time, elapsedTime = millisToPosix 0 }
             , Cmd.none
             )
 
@@ -96,10 +96,10 @@ update msg model =
             if model.isStarted then
                 let
                     difference =
-                        Time.posixToMillis now - Time.posixToMillis model.startTime
+                        posixToMillis now - posixToMillis model.startTime
                 in
                 ( { model
-                    | elapsedTime = Time.millisToPosix difference
+                    | elapsedTime = millisToPosix difference
                     , totalDeaths = difference |> toFloat |> (*) deathRatePerMillis |> round
                   }
                 , Cmd.none
@@ -117,7 +117,7 @@ subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ onClick (succeed Click)
-        , Time.every 50 Tick
+        , every 50 Tick
         ]
 
 
@@ -125,38 +125,33 @@ subscriptions _ =
 -- VIEW
 
 
-view : Model -> Html.Html Msg
+view : Model -> Html Msg
 view model =
     let
-        padTime : Int -> String
-        padTime unit =
-            String.fromInt unit |> String.padLeft 2 '0'
+        time : Posix -> (Zone -> Posix -> Int) -> String
+        time posix f =
+            String.padLeft 2 '0' <| String.fromInt <| f utc posix
 
-        hour =
-            padTime (Time.toHour Time.utc model.elapsedTime)
-
-        minute =
-            padTime (Time.toMinute Time.utc model.elapsedTime)
-
-        second =
-            padTime (Time.toSecond Time.utc model.elapsedTime)
+        fontSize : String -> Attribute msg
+        fontSize =
+            style "font-size"
     in
-    Html.div
+    div
         [ style "font-family" "Verdana, sans-serif"
         , style "text-align" "center"
         ]
-        [ Html.div
-            [ style "font-size" "10em"
+        [ div
+            [ fontSize "10em"
             , style "position" "absolute"
             , style "transform" "translate(-50%, -50%)"
             , style "top" "50%"
             , style "left" "50%"
             ]
-            [ Html.text (String.fromInt model.totalDeaths)
+            [ text (String.fromInt model.totalDeaths)
             ]
-        , Html.div
-            [ style "font-size" "3em"
+        , div
+            [ fontSize "3em"
             ]
-            [ Html.text (String.join ":" [ hour, minute, second ])
+            [ text (List.map (time model.elapsedTime) [ toHour, toMinute, toSecond ] |> String.join ":")
             ]
         ]
