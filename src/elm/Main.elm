@@ -7,7 +7,7 @@ import Html.Attributes exposing (style)
 import Json.Decode exposing (succeed)
 import String.Extra
 import Task
-import Time exposing (Posix, Zone, every, millisToPosix, now, posixToMillis, toHour, toMinute, toSecond, utc)
+import Time exposing (Posix, every, millisToPosix, now, posixToMillis, toHour, toMinute, toSecond, utc)
 
 
 
@@ -138,16 +138,6 @@ view model =
         fontSize =
             style "font-size"
 
-        parentStyle =
-            [ style "font-family" "Verdana, sans-serif"
-            , style "background-color" "black"
-            , style "color" "white"
-            , style "text-align" "center"
-            , style "height" "100%"
-            , style "width" "100%"
-            , absolutePosition
-            ]
-
         timerDiv =
             div
                 [ fontSize "4em"
@@ -160,32 +150,41 @@ view model =
                         )
                     )
                 ]
+
+        counterDiv =
+            let
+                prettyCount : Int -> String
+                prettyCount =
+                    String.fromInt
+                        >> String.reverse
+                        >> String.Extra.break 3
+                        >> String.join " "
+                        >> String.reverse
+            in
+            div
+                [ fontSize "10em"
+                , absolutePosition
+                , style "transform" "translate(-50%, -50%)"
+                , style "top" "50%"
+                , style "left" "50%"
+                , style "overflow" "hidden"
+                , style "white-space" "nowrap"
+                ]
+                [ text (prettyCount model.totalDeaths)
+                ]
     in
     div
-        parentStyle
-        (timerDiv
-            :: (if model.isHidden then
-                    []
+        [ style "font-family" "Verdana, sans-serif"
+        , style "background-color" "black"
+        , style "color" "white"
+        , style "text-align" "center"
+        , style "height" "100%"
+        , style "width" "100%"
+        , absolutePosition
+        ]
+        (if model.isHidden then
+            [ timerDiv ]
 
-                else
-                    let
-                        prettyCount : Int -> String
-                        prettyCount =
-                            String.fromInt >>
-                            String.reverse >>
-                            String.Extra.break 3 >>
-                            String.join " " >>
-                            String.reverse
-                    in
-                    [ div
-                        [ fontSize "10em"
-                        , absolutePosition
-                        , style "transform" "translate(-50%, -50%)"
-                        , style "top" "50%"
-                        , style "left" "50%"
-                        ]
-                        [ text (prettyCount model.totalDeaths)
-                        ]
-                    ]
-               )
+         else
+            [ timerDiv, counterDiv ]
         )
